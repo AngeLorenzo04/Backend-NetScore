@@ -9,13 +9,15 @@
     "@prisma/cli": "^3.0.0-beta.16",
     "@prisma/client": "^6.17.0",
     "cookie-parser": "~1.4.4",
+    "cors": "^2.8.6",
     "debug": "~2.6.9",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "http-errors": "~1.6.3",
     "morgan": "^1.11.0",
     "prisma": "^6.17.0",
-    "pug": "^2.0.4",
+    "pug": "^3.0.4",
+    "socket.io": "^4.8.3",
     "tsx": "^4.22.4"
   }
 }
