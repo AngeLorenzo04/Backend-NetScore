@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: netscore-database
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: netscore_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - netscore-pgdata:/var/lib/postgresql/data
+
+# LA CORREZIONE È QUI SOTTO
+volumes:
+  netscore-pgdata:
+    driver: local

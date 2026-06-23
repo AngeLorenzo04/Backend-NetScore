@@ -1,5 +1,4 @@
 // tests/__mocks__/@prisma/client.js
-const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
 
 const mockPrisma = {
   user: {
@@ -22,15 +21,18 @@ const mockPrisma = {
   $transaction: jest.fn((callback) => callback(mockPrisma)),
 };
 
+const mockMatchStatus = {
+  SCHEDULED: 'SCHEDULED',
+  IN_PLAY: 'IN_PLAY',
+  FINISHED: 'FINISHED',
+};
+
 // This allows us to mock the PrismaClient constructor itself
 // So that `new PrismaClient()` in our code returns our mock
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn(() => mockPrisma),
-  // Export enums or other types if needed by the tests
-  MatchStatus: RealPrismaClient.MatchStatus, // Or define your own mock enum
-}));
+const PrismaClient = jest.fn(() => mockPrisma);
 
+// Export enums or other types if needed by the tests
 module.exports = {
-  PrismaClient: jest.fn(() => mockPrisma),
-  mockPrisma,
+  PrismaClient,
+  MatchStatus: mockMatchStatus,
 };
