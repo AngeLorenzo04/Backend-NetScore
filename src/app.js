@@ -3,6 +3,7 @@ const http = require('http');
 const cors = require('cors');
 const predictionRoutes = require('./routes/predictionRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const authRoutes = require('./routes/authRoutes'); // Import authRoutes
 const socketManager = require('./websockets/socketManager'); // Import socketManager
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/webhooks/nostradamus', webhookRoutes);
+app.use('/api/auth', authRoutes); // Register auth routes
 
 // Basic error handling middleware
 app.use((err, req, res, next) => {
