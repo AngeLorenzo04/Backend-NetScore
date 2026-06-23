@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const predictionRoutes = require('./routes/predictionRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/webhooks/nostradamus', webhookRoutes);
 
 // Basic error handling middleware
 app.use((err, req, res, next) => {
