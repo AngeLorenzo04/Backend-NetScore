@@ -1,18 +1,15 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
 const cors = require('cors');
 const predictionRoutes = require('./routes/predictionRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const socketManager = require('./websockets/socketManager'); // Import socketManager
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*', // Adjust as needed for your frontend
-    methods: ['GET', 'POST'],
-  },
-});
+
+// Initialize Socket.io through the manager
+socketManager.init(server);
 
 app.use(cors());
 app.use(express.json());
@@ -27,4 +24,4 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-module.exports = { app, server, io };
+module.exports = { app, server }; // io is now managed internally by socketManager
