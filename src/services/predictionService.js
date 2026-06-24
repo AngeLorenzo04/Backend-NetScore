@@ -15,6 +15,11 @@ const createPrediction = async ({ userId, matchId, leagueId, predictedHome, pred
     throw new Error('Predictions can only be made for matches that are SCHEDULED.');
   }
 
+  if ((match.homeTeam && match.homeTeam.toUpperCase() === 'TBD') || 
+      (match.awayTeam && match.awayTeam.toUpperCase() === 'TBD')) {
+    throw new Error('Predictions cannot be made for matches with undetermined teams (TBD).');
+  }
+
   if (new Date() >= match.startTime) {
     throw new Error('Predictions cannot be made after the match has started.');
   }

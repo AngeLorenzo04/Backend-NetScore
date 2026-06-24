@@ -205,6 +205,39 @@ describe('API Integration Tests', () => {
       expect(prisma.prediction.upsert).not.toHaveBeenCalled();
     });
 
+    it('should return 400 if prediction is made for a match with TBD teams', async () => {
+      const predictionData = {
+        userId: mockUserId,
+        matchId: mockMatchId,
+        leagueId: mockLeagueId,
+        predictedHome: 1,
+        predictedAway: 0,
+      };
+
+      prisma.leagueMember.findUnique.mockResolvedValue({
+        userId: mockUserId,
+        leagueId: mockLeagueId,
+      });
+
+      prisma.match.findUnique.mockResolvedValue({
+        id: mockMatchId,
+        startTime: new Date(Date.now() + 60000),
+        status: MatchStatus.SCHEDULED,
+        homeTeam: 'TBD',
+        awayTeam: 'TBD',
+      });
+
+      const res = await request(app)
+        .post('/api/predictions')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(predictionData);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body).toHaveProperty('error', 'Predictions cannot be made for matches with undetermined teams (TBD).');
+      expect(prisma.match.findUnique).toHaveBeenCalledTimes(1);
+      expect(prisma.prediction.upsert).not.toHaveBeenCalled();
+    });
+
     it('should return 401 if no token is provided', async () => {
       const predictionData = {
         userId: mockUserId,
