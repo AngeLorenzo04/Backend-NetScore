@@ -35,11 +35,14 @@ const createPrediction = async ({ userId, matchId, leagueId, predictedHome, pred
     }
     targetLeagues = [leagueId];
   } else {
-    const userLeagues = await prisma.leagueMember.findMany({
+    const firstLeague = await prisma.leagueMember.findFirst({
       where: { userId },
+      orderBy: { leagueId: 'asc' },
       select: { leagueId: true }
     });
-    targetLeagues = userLeagues.map(l => l.leagueId);
+    if (firstLeague) {
+      targetLeagues = [firstLeague.leagueId];
+    }
   }
 
   if (targetLeagues.length === 0) {
