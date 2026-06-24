@@ -30,6 +30,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/leagues', leagueRoutes);
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
+
 // Basic error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
