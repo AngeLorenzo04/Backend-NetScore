@@ -3,8 +3,10 @@ const http = require('http');
 const cors = require('cors');
 const predictionRoutes = require('./routes/predictionRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
-const authRoutes = require('./routes/authRoutes'); // Import authRoutes
-const socketManager = require('./websockets/socketManager'); // Import socketManager
+const authRoutes = require('./routes/authRoutes');
+const socketManager = require('./websockets/socketManager');
+const { startMatchSyncJob } = require('./jobs/matchSyncJob'); // Import job
+const { webhookAuth } = require('./middlewares/webhookAuth'); // Import webhookAuth middleware
 
 const app = express();
 const server = http.createServer(app);
@@ -17,8 +19,9 @@ app.use(express.json());
 
 // Routes
 app.use('/api/predictions', predictionRoutes);
-app.use('/api/webhooks/nostradamus', webhookRoutes);
-app.use('/api/auth', authRoutes); // Register auth routes
+// Apply webhookAuth middleware to the webhook route
+app.use('/api/webhooks/nostradamus', webhookAuth, webhookRoutes);
+app.use('/api/auth', authRoutes);
 
 // Basic error handling middleware
 app.use((err, req, res, next) => {
@@ -26,4 +29,7 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
-module.exports = { app, server }; // io is now managed internally by socketManager
+// Start scheduled jobs
+startMatchSyncJob();
+
+module.exports = { app, server };
