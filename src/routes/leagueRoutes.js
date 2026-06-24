@@ -15,4 +15,7 @@ router.post('/join', authenticateToken, leagueController.joinLeague);
 // GET /api/leagues/:leagueId/leaderboard - Get leaderboard of a league
 router.get('/:leagueId/leaderboard', authenticateToken, leagueController.getLeaderboard);
 
+// DELETE /api/leagues/:leagueId - Delete a league (creator only)
+router.delete('/:leagueId', authenticateToken, leagueController.deleteLeague);
+
 module.exports = router;

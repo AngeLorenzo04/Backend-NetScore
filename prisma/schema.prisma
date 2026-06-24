@@ -15,6 +15,7 @@ model User {
   avatarUrl     String?        @map("avatar_url")
   leagueMembers LeagueMember[]
   predictions   Prediction[]
+  createdLeagues League[]       @relation("CreatedLeagues")
 
   @@map("users")
 }
@@ -24,6 +25,8 @@ model League {
   name            String
   inviteCode      String         @unique
   scoringStrategy String         @default("CLASSIC")
+  creatorId       String?        @map("creator_id")
+  creator         User?          @relation("CreatedLeagues", fields: [creatorId], references: [id])
   leagueMembers   LeagueMember[]
   predictions     Prediction[]
 

@@ -33,7 +33,8 @@ const getUserLeagues = async (req, res) => {
         code: league.inviteCode,
         membersCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
-        points: ul.totalPoints
+        points: ul.totalPoints,
+        creatorId: league.creatorId
       });
     }
 
@@ -66,7 +67,8 @@ const createLeague = async (req, res) => {
         data: {
           name,
           inviteCode,
-          scoringStrategy: 'CLASSIC'
+          scoringStrategy: 'CLASSIC',
+          creatorId: userId
         }
       });
 
@@ -87,7 +89,8 @@ const createLeague = async (req, res) => {
       code: newLeague.inviteCode,
       membersCount: 1,
       rank: 1,
-      points: 0
+      points: 0,
+      creatorId: newLeague.creatorId
     });
   } catch (error) {
     console.error('Error creating league:', error);
@@ -161,7 +164,8 @@ const joinLeague = async (req, res) => {
       code: league.inviteCode,
       membersCount: updatedMembersCount,
       rank: updatedMembersCount,
-      points: 0
+      points: 0,
+      creatorId: league.creatorId
     });
   } catch (error) {
     console.error('Error joining league:', error);
@@ -214,9 +218,48 @@ const getLeaderboard = async (req, res) => {
   }
 };
 
+const deleteLeague = async (req, res) => {
+  const { leagueId } = req.params;
+  const userId = req.user.userId;
+
+  try {
+    const league = await prisma.league.findUnique({
+      where: { id: leagueId },
+    });
+
+    if (!league) {
+      return res.status(404).json({ error: 'League not found.' });
+    }
+
+    if (league.creatorId !== userId) {
+      return res.status(403).json({ error: 'Only the league creator can delete this league.' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.prediction.deleteMany({
+        where: { leagueId },
+      });
+
+      await tx.leagueMember.deleteMany({
+        where: { leagueId },
+      });
+
+      await tx.league.delete({
+        where: { id: leagueId },
+      });
+    });
+
+    res.status(200).json({ message: 'League deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting league:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 module.exports = {
   getUserLeagues,
   createLeague,
   joinLeague,
   getLeaderboard,
+  deleteLeague,
 };
