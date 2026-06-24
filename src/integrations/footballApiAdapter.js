@@ -43,9 +43,10 @@ function transformMatches(externalData) {
           second: '2-digit'
         });
         const romeDateString = formatter.format(startTime).replace(' ', 'T') + 'Z';
-        startTime = new Date(romeDateString);
+        startTime = new Date(new Date(romeDateString).getTime() - 2 * 60 * 60 * 1000);
       } catch (e) {
         console.warn("Failed to shift time to Europe/Rome, using default UTC date:", e);
+        startTime = new Date(startTime.getTime() - 2 * 60 * 60 * 1000);
       }
 
       return {

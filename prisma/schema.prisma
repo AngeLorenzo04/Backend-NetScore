@@ -1,10 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model User {
@@ -23,7 +23,7 @@ model League {
   id              String         @id @default(uuid()) @map("id")
   name            String
   inviteCode      String         @unique
-  scoringStrategy String         @default("CLASSIC") // e.g., "CLASSIC", "ELASTIC"
+  scoringStrategy String         @default("CLASSIC")
   leagueMembers   LeagueMember[]
   predictions     Prediction[]
 
@@ -34,48 +34,44 @@ model LeagueMember {
   userId      String @map("user_id")
   leagueId    String @map("league_id")
   totalPoints Int    @default(0)
-
-  user   User   @relation(fields: [userId], references: [id])
-  league League @relation(fields: [leagueId], references: [id])
+  league      League @relation(fields: [leagueId], references: [id])
+  user        User   @relation(fields: [userId], references: [id])
 
   @@id([userId, leagueId])
   @@map("league_members")
 }
 
-enum MatchStatus {
-  SCHEDULED
-  IN_PLAY
-  FINISHED
-}
-
 model Match {
-  id        String      @id @map("id") // Assuming match IDs are external, e.g., from a sports API
-  homeTeam  String
-  awayTeam  String
-  startTime DateTime
-  status    MatchStatus @default(SCHEDULED)
-  homeGoals Int?
-  awayGoals Int?
-
+  id          String       @id @map("id")
+  homeTeam    String
+  awayTeam    String
+  startTime   DateTime
+  status      MatchStatus  @default(SCHEDULED)
+  homeGoals   Int?
+  awayGoals   Int?
   predictions Prediction[]
 
   @@map("matches")
 }
 
 model Prediction {
-  id            String   @id @default(uuid()) @map("id")
+  id            String @id @default(uuid()) @map("id")
   predictedHome Int
   predictedAway Int
   pointsEarned  Int?
-
-  userId   String @map("user_id")
-  matchId  String @map("match_id")
-  leagueId String @map("league_id")
-
-  user    User   @relation(fields: [userId], references: [id])
-  match   Match  @relation(fields: [matchId], references: [id])
-  league  League @relation(fields: [leagueId], references: [id])
+  userId        String @map("user_id")
+  matchId       String @map("match_id")
+  leagueId      String @map("league_id")
+  league        League @relation(fields: [leagueId], references: [id])
+  match         Match  @relation(fields: [matchId], references: [id])
+  user          User   @relation(fields: [userId], references: [id])
 
   @@unique([userId, matchId, leagueId])
   @@map("predictions")
+}
+
+enum MatchStatus {
+  SCHEDULED
+  IN_PLAY
+  FINISHED
 }
