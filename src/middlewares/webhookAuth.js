@@ -1,5 +1,5 @@
 // src/middlewares/webhookAuth.js
-import crypto from 'crypto';
+const crypto = require('crypto');
 
 /**
  * Middleware to verify HMAC SHA256 signature for incoming webhooks.
@@ -9,7 +9,7 @@ import crypto from 'crypto';
  * @param {Object} res - Express response object.
  * @param {Function} next - Express next middleware function.
  */
-export const webhookAuth = (req, res, next) => {
+const webhookAuth = (req, res, next) => {
   const signature = req.get('X-Signature');
   const secret = process.env.WEBHOOK_SECRET; // Ensure this is set in your environment variables
 
@@ -24,12 +24,6 @@ export const webhookAuth = (req, res, next) => {
   }
 
   // Ensure req.body is available for signing.
-  // Express's body-parser should have parsed it into a JS object.
-  // For HMAC, we need the raw body, which might require a different setup
-  // or storing the raw body before body-parser parses it.
-  // For simplicity here, we assume req.body is already a JSON object and
-  // we stringify it to get a consistent payload for HMAC.
-  // In a production environment, it's safer to use the raw body buffer.
   const payload = JSON.stringify(req.body);
 
   const hmac = crypto.createHmac('sha256', secret);
@@ -43,3 +37,5 @@ export const webhookAuth = (req, res, next) => {
   console.log('Webhook signature verified successfully.');
   next();
 };
+
+module.exports = { webhookAuth };

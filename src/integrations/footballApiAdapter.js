@@ -1,5 +1,5 @@
 // src/integrations/footballApiAdapter.js
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 /**
@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
  * @param {Array<Object>} externalData - Array of raw match objects from the external API.
  * @returns {Array<Object>} Array of match objects formatted for NetScore's Prisma schema.
  */
-export function transformMatches(externalData) {
+function transformMatches(externalData) {
   try {
     return externalData.map(match => {
       // Example mapping, adjust based on actual external API and Prisma schema
@@ -43,19 +43,13 @@ export function transformMatches(externalData) {
       }
 
       return {
-        id: match.fixture.id, // External ID as unique identifier
-        externalId: match.fixture.id.toString(),
+        id: match.fixture.id.toString(),
         homeTeam: homeTeamName,
         awayTeam: awayTeamName,
         startTime: new Date(match.fixture.date),
         status: matchStatus,
-        leagueId: match.league.id,
-        season: match.league.season,
-        round: match.league.round,
-        // Assuming scores are available, otherwise set to null or default
         homeScore: match.goals.home,
         awayScore: match.goals.away,
-        venue: match.fixture.venue.name,
       };
     });
   } catch (error) {
@@ -63,3 +57,5 @@ export function transformMatches(externalData) {
     throw new Error("Failed to transform match data.");
   }
 }
+
+module.exports = { transformMatches };

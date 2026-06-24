@@ -1,7 +1,7 @@
 // src/jobs/matchSyncJob.js
-import cron from 'node-cron';
-import { PrismaClient } from '@prisma/client';
-import { transformMatches } from '../integrations/footballApiAdapter.js'; // Adjust path as needed
+const cron = require('node-cron');
+const { PrismaClient } = require('@prisma/client');
+const { transformMatches } = require('../integrations/footballApiAdapter'); // Adjust path as needed
 
 const prisma = new PrismaClient();
 
@@ -28,57 +28,55 @@ const mockExternalApiData = [
     teams: { home: { name: 'Mock Home Team C' }, away: { name: 'Mock Away Team D' } },
     goals: { home: null, away: null }
   },
-  // Add more mock data as needed for testing
 ];
 
-/**
- * Schedules a daily job to sync future matches from an external API.
- */
-export const startMatchSyncJob = () => {
+const syncMatches = async () => {
+  console.log('Running match synchronization...');
+  try {
+    const externalApiRawData = mockExternalApiData;
+    console.log('Fetched raw data from external API (mocked).');
+
+    const transformedData = transformMatches(externalApiRawData);
+    console.log(`Transformed ${transformedData.length} matches.`);
+
+    for (const match of transformedData) {
+      await prisma.match.upsert({
+        where: { id: match.id },
+        update: {
+          status: match.status,
+          startTime: match.startTime,
+          homeGoals: match.homeScore,
+          awayGoals: match.awayScore,
+        },
+        create: {
+          id: match.id,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          startTime: match.startTime,
+          status: match.status,
+          homeGoals: match.homeScore,
+          awayGoals: match.awayScore,
+        },
+      });
+    }
+    console.log('Match synchronization completed successfully.');
+  } catch (error) {
+    console.error('Error during match synchronization:', error);
+  }
+};
+
+const startMatchSyncJob = () => {
   cron.schedule('0 3 * * *', async () => {
     console.log('Running daily match synchronization job...');
-    try {
-      // --- Mock External API Fetch ---
-      // In a real application, you would make an actual HTTP request here
-      // For demonstration, we use mock data
-      const externalApiRawData = mockExternalApiData; // Replace with actual API call
-      console.log('Fetched raw data from external API (mocked).');
-
-      const transformedData = transformMatches(externalApiRawData);
-      console.log(`Transformed ${transformedData.length} matches.`);
-
-      for (const match of transformedData) {
-        await prisma.match.upsert({
-          where: { externalId: match.externalId }, // Use externalId for upsert
-          update: {
-            status: match.status,
-            startTime: match.startTime,
-            homeScore: match.homeScore,
-            awayScore: match.awayScore,
-            // Only update fields that might change for existing matches
-          },
-          create: {
-            externalId: match.externalId,
-            homeTeam: match.homeTeam,
-            awayTeam: match.awayTeam,
-            startTime: match.startTime,
-            status: match.status,
-            leagueId: match.leagueId,
-            season: match.season,
-            round: match.round,
-            homeScore: match.homeScore,
-            awayScore: match.awayScore,
-            venue: match.venue,
-          },
-        });
-      }
-      console.log('Match synchronization job completed successfully.');
-    } catch (error) {
-      console.error('Error during daily match synchronization job:', error);
-    }
+    await syncMatches();
   }, {
     scheduled: true,
-    timezone: "Etc/UTC" // Or your desired timezone
+    timezone: "Etc/UTC"
   });
   console.log('Match synchronization job scheduled to run daily at 3:00 AM UTC.');
+};
+
+module.exports = {
+  startMatchSyncJob,
+  syncMatches
 };
