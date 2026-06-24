@@ -25,7 +25,7 @@ This project implements the backend API for NetScore, a prediction platform wher
 
 ## 🏛️ Architecture & Design
 
-The backend follows a **Layered Architecture** and leverages design patterns like the **Strategy Pattern** to ensure modularity, scalability, and ease of testing.
+The backend is engineered following clean code principles, structured as a **Layered Architecture** with a clear separation of concerns, and implements design patterns like the **Strategy Pattern** and room-scoped event broadcasting.
 
 ### System Architecture Flow
 ```mermaid
@@ -40,14 +40,93 @@ graph TD
     Service -->|Socket Manager| WebSockets[Socket.io Broadcast]
 ```
 
-### Key Architectural Layers:
-*   **`src/routes`**: Defines the HTTP API endpoints and associates them with specific controller handlers.
-*   **`src/controllers`**: Standardizes request validation, extracts parameters from bodies/headers, invokes services, and handles HTTP response codes and structures.
-*   **`src/services`**: The core business logic layer. Implements business validations (e.g., verifying if a match is scheduled before allowing predictions) and orchestrates database transactions using Prisma.
-*   **`src/strategies`**: Implements the **Strategy Pattern** for prediction scoring. Different leagues can define different strategies (e.g. `CLASSIC`) extending a base class, making it easy to add new scoring rules without changing the controller or service logic.
-*   **`src/middlewares`**: Intercepts requests for authentication (JWT verifying) and security validation (HMAC SHA-256 webhook signature validation).
-*   **`src/websockets`**: Manages room-based Socket.io namespaces to stream live leaderboard updates to clients joined in a specific league room.
-*   **`src/jobs`**: Automated cron tasks (using `node-cron`) to daily synchronize real-world sports fixtures (fetching from APIs like Football-Data.org) into our database.
+### Key Architectural Layers & Design Decisions:
+
+1. **Routing Layer (`src/routes`)**
+   * Maps HTTP requests to specific controller functions.
+   * Defines route protections using token-verification and signature-verification middlewares.
+
+2. **Controller Layer (`src/controllers`)**
+   * Decouples the presentation layer from business logic.
+   * Standardizes request validation, extracts payloads, executes operations, and returns uniform JSON formats (e.g. `200 OK`, `201 Created`, `400 Bad Request`, `401 Unauthorized`, `500 Server Error`).
+
+3. **Business Logic Layer (`src/services`)**
+   * Contains core prediction logic, user league boundaries, score updates, and operations orchestration.
+   * **League-scoped Predictions Isolation**: A prediction is uniquely bound to a `userId`, `matchId`, and `leagueId`. This enables a user participating in multiple leagues to submit separate predictions for the same match without they overwriting each other.
+   * **Transactional Database Ops**: Orchestrates multi-row reads and writes inside transaction boundaries using Prisma Transaction API (e.g. duplicating matches' predictions when joining a league).
+
+4. **Scoring Strategy Pattern (`src/strategies`)**
+   * Abstract class `ScoringStrategy` defines interface guidelines for outcome evaluation.
+   * Concrete class `ClassicScoringStrategy` calculates points:
+     * **3 Points**: Exact score prediction (e.g. predicted `2 - 1`, match ends `2 - 1`).
+     * **1 Point**: Correct outcome (1X2) prediction (e.g. predicted `3 - 1` [home win], match ends `1 - 0` [home win]).
+     * **0 Points**: Incorrect outcome prediction.
+   * This design permits adding new rulesets (e.g. `"GOAL_DIFFERENCE"` or `"EXACT_ONLY"`) by simply adding a new strategy class extending `ScoringStrategy`, without touching the core scoring execution service.
+
+5. **External Integration Layer (`src/integrations`)**
+   * Integrates external APIs like `football-data.org` to fetch match listings.
+   * **Timezone Offset**: Normalizes UTC timestamp formats, applying a `-2h` offset to resolve local Rome (+2h) time formatting issues, ensuring that the stored kick-off times accurately reflect local scheduling.
+
+6. **WebSockets Layer (`src/websockets`)**
+   * Uses `socket.io` to provide real-time updates.
+   * Clients join rooms identified by the specific `leagueId` they are viewing. After webhook result validation and scoring runs, the database points are recalculated and the updated leaderboard ranks are broadcasted only to the relevant room.
+
+---
+
+## 🗄️ Database Entity-Relationship (ER) Diagram
+
+The relational schema is implemented in PostgreSQL via Prisma ORM:
+
+```mermaid
+erDiagram
+    users {
+        String id PK "UUID"
+        String nickname UNIQUE
+        String email UNIQUE
+        String passwordHash
+        String avatarUrl "Base64 or image URL"
+    }
+    leagues {
+        String id PK "UUID"
+        String name
+        String inviteCode UNIQUE
+        String scoringStrategy "Default: CLASSIC"
+    }
+    league_members {
+        String userId PK, FK
+        String leagueId PK, FK
+        Int totalPoints "Default: 0"
+    }
+    matches {
+        String id PK "API Match ID"
+        String homeTeam
+        String awayTeam
+        DateTime startTime
+        MatchStatus status "SCHEDULED | IN_PLAY | FINISHED"
+        Int homeGoals "Nullable"
+        Int awayGoals "Nullable"
+    }
+    predictions {
+        String id PK "UUID"
+        Int predictedHome
+        Int predictedAway
+        Int pointsEarned "Nullable"
+        String userId FK
+        String matchId FK
+        String leagueId FK
+    }
+
+    users ||--o{ league_members : "belongs to"
+    leagues ||--o{ league_members : "has members"
+    users ||--o{ predictions : "submits"
+    matches ||--o{ predictions : "has predictions"
+    leagues ||--o{ predictions : "contains predictions"
+```
+
+### Schema Relations & Constraints
+* **Composite Primary Key**: `league_members` has a composite PK `[user_id, league_id]`, preventing a user from joining the same league more than once.
+* **Unique Prediction Constraints**: `predictions` enforces a unique constraint on `[user_id, match_id, league_id]` so that a user can have at most one prediction per match per league.
+* **Nullable Columns**: Match scores (`homeGoals`, `awayGoals`) and predictions' score points (`pointsEarned`) are nullable until the match transitions to `FINISHED`.
 
 ## 🛠️ Prerequisites
 
