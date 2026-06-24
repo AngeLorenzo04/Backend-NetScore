@@ -2,6 +2,7 @@
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const { transformMatches } = require('../integrations/footballApiAdapter'); // Adjust path as needed
+const { processMatchResult } = require('../services/scoringService');
 
 const prisma = new PrismaClient();
 
@@ -79,24 +80,70 @@ const syncMatches = async () => {
     console.log(`Transformed ${transformedData.length} matches.`);
 
     for (const match of transformedData) {
-      await prisma.match.upsert({
-        where: { id: match.id },
-        update: {
-          status: match.status,
-          startTime: match.startTime,
-          homeGoals: match.homeScore,
-          awayGoals: match.awayScore,
-        },
-        create: {
-          id: match.id,
-          homeTeam: match.homeTeam,
-          awayTeam: match.awayTeam,
-          startTime: match.startTime,
-          status: match.status,
-          homeGoals: match.homeScore,
-          awayGoals: match.awayScore,
-        },
-      });
+      try {
+        const existingMatch = await prisma.match.findUnique({
+          where: { id: match.id }
+        });
+
+        if (match.status === 'FINISHED') {
+          if (!existingMatch || existingMatch.status !== 'FINISHED') {
+            console.log(`Match ${match.id} (${match.homeTeam} vs ${match.awayTeam}) finished. Processing results...`);
+            
+            // First upsert the match record as SCHEDULED (or keep its existing status) so processMatchResult can process predictions
+            await prisma.match.upsert({
+              where: { id: match.id },
+              update: {
+                startTime: match.startTime,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                status: existingMatch ? existingMatch.status : 'SCHEDULED',
+              },
+              create: {
+                id: match.id,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                startTime: match.startTime,
+                status: 'SCHEDULED',
+              },
+            });
+
+            // Calculate points, update predictions/leaderboard, and mark it FINISHED
+            await processMatchResult(match.id, match.homeScore, match.awayScore);
+          } else {
+            // Already finished and processed, just update any metadata/scores if needed
+            await prisma.match.update({
+              where: { id: match.id },
+              data: {
+                startTime: match.startTime,
+                homeGoals: match.homeScore,
+                awayGoals: match.awayScore,
+              }
+            });
+          }
+        } else {
+          // SCHEDULED or IN_PLAY
+          await prisma.match.upsert({
+            where: { id: match.id },
+            update: {
+              status: match.status,
+              startTime: match.startTime,
+              homeGoals: match.homeScore,
+              awayGoals: match.awayScore,
+            },
+            create: {
+              id: match.id,
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              startTime: match.startTime,
+              status: match.status,
+              homeGoals: match.homeScore,
+              awayGoals: match.awayScore,
+            },
+          });
+        }
+      } catch (err) {
+        console.error(`Error processing match ${match.id} synchronization:`, err);
+      }
     }
     console.log('Match synchronization completed successfully.');
   } catch (error) {
