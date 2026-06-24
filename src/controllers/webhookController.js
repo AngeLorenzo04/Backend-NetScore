@@ -12,7 +12,7 @@ const handleNostradamusWebhook = async (req, res) => {
   try {
     // Idempotency Shield: Check if the match result has already been processed
     const existingMatch = await prisma.match.findUnique({
-      where: { id: parseInt(matchId, 10) }, // Assuming matchId is an integer
+      where: { id: matchId.toString() },
       select: { status: true },
     });
 

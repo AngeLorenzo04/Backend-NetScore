@@ -31,8 +31,7 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
       throw new Error(`Match with ID ${matchId} has already been processed.`);
     }
 
-    const updates = [];
-    const leagueMemberPointChanges = new Map(); // Map to store total points per league member
+    const updatedPredictions = [];
 
     for (const prediction of match.predictions) {
       const pointsEarned = classicScoring.calculatePoints(
@@ -42,55 +41,38 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
         awayGoals
       );
 
-      // Add prediction update to transaction
-      updates.push(
-        tx.prediction.update({
-          where: { id: prediction.id },
-          data: { pointsEarned: pointsEarned },
-        })
-      );
+      // Update prediction
+      const updatedPrediction = await tx.prediction.update({
+        where: { id: prediction.id },
+        data: { pointsEarned: pointsEarned },
+      });
+      updatedPredictions.push(updatedPrediction);
 
-      // Aggregate points for LeagueMembers
-      const leagueMemberKey = `${prediction.userId}-${prediction.leagueId}`;
-      leagueMemberPointChanges.set(
-        leagueMemberKey,
-        (leagueMemberPointChanges.get(leagueMemberKey) || 0) + pointsEarned
-      );
-    }
-
-    // Update LeagueMembers totalPoints
-    for (const [key, points] of leagueMemberPointChanges.entries()) {
-      const [userId, leagueId] = key.split('-');
-      updates.push(
-        tx.leagueMember.update({
-          where: {
-            userId_leagueId: {
-              userId: userId,
-              leagueId: leagueId,
-            },
+      // Update LeagueMember totalPoints
+      await tx.leagueMember.update({
+        where: {
+          userId_leagueId: {
+            userId: prediction.userId,
+            leagueId: prediction.leagueId,
           },
-          data: {
-            totalPoints: {
-              increment: points,
-            },
+        },
+        data: {
+          totalPoints: {
+            increment: pointsEarned,
           },
-        })
-      );
+        },
+      });
     }
 
     // Update Match status and scores
-    updates.push(
-      tx.match.update({
-        where: { id: matchId },
-        data: {
-          status: 'FINISHED',
-          homeGoals: homeGoals,
-          awayGoals: awayGoals,
-        },
-      })
-    );
-
-    await Promise.all(updates); // Execute all updates concurrently within the transaction
+    await tx.match.update({
+      where: { id: matchId },
+      data: {
+        status: 'FINISHED',
+        homeGoals: homeGoals,
+        awayGoals: awayGoals,
+      },
+    });
 
     return { message: `Match ${matchId} results processed successfully.`, updatedPredictions: match.predictions };
   });
