@@ -1,4 +1,5 @@
 // src/jobs/runSync.js
+require('dotenv').config();
 const { syncMatches } = require('./matchSyncJob');
 
 syncMatches()

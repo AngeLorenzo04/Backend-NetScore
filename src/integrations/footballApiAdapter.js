@@ -3,57 +3,46 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 /**
- * Transforms external football API data into NetScore's Prisma match schema.
- * @param {Array<Object>} externalData - Array of raw match objects from the external API.
+ * Transforms Football-Data.org API data into NetScore's Prisma match schema.
+ * @param {Array<Object>} externalData - Array of raw match objects from Football-Data.org.
  * @returns {Array<Object>} Array of match objects formatted for NetScore's Prisma schema.
  */
 function transformMatches(externalData) {
   try {
     return externalData.map(match => {
-      // Example mapping, adjust based on actual external API and Prisma schema
-      const homeTeamName = match.teams.home.name;
-      const awayTeamName = match.teams.away.name;
-      const status = match.fixture.status.short; // e.g., 'NS', 'FT', 'HT', 'PST'
+      const homeTeamName = (match.homeTeam && (match.homeTeam.name || match.homeTeam.shortName)) || 'TBD';
+      const awayTeamName = (match.awayTeam && (match.awayTeam.name || match.awayTeam.shortName)) || 'TBD';
+      const status = match.status; // e.g., "TIMED", "SCHEDULED", "IN_PLAY", "FINISHED"
 
       let matchStatus;
       switch (status) {
-        case 'NS':
+        case 'TIMED':
+        case 'SCHEDULED':
           matchStatus = 'SCHEDULED';
           break;
-        case 'FT':
-        case 'AET':
-        case 'PEN':
-          matchStatus = 'FINISHED';
+        case 'IN_PLAY':
+        case 'PAUSED':
+          matchStatus = 'IN_PLAY';
           break;
-        case 'HT':
-        case '1H':
-        case '2H':
-          matchStatus = 'LIVE';
-          break;
-        case 'PST':
-        case 'CANC':
-        case 'ABD':
-          matchStatus = 'CANCELLED';
-          break;
-        case 'WO': // Walkover
+        case 'FINISHED':
           matchStatus = 'FINISHED';
           break;
         default:
-          matchStatus = 'UNKNOWN';
+          matchStatus = 'SCHEDULED';
       }
 
       return {
-        id: match.fixture.id.toString(),
+        id: match.id.toString(),
         homeTeam: homeTeamName,
         awayTeam: awayTeamName,
-        startTime: new Date(match.fixture.date),
+        startTime: new Date(match.utcDate),
         status: matchStatus,
-        homeScore: match.goals.home,
-        awayScore: match.goals.away,
+        homeScore: match.score && match.score.fullTime ? match.score.fullTime.home : null,
+        awayScore: match.score && match.score.fullTime ? match.score.fullTime.away : null,
       };
     });
   } catch (error) {
-    console.error("Error transforming external match data:", error);
+    console.error("Error transforming Football-Data.org match data:", error);
     throw new Error("Failed to transform match data.");
   }
 }
