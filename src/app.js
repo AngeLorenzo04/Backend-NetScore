@@ -5,6 +5,8 @@ const predictionRoutes = require('./routes/predictionRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const matchRoutes = require('./routes/matchRoutes');
+const leagueRoutes = require('./routes/leagueRoutes');
 const socketManager = require('./websockets/socketManager');
 const { startMatchSyncJob } = require('./jobs/matchSyncJob'); // Import job
 const { webhookAuth } = require('./middlewares/webhookAuth'); // Import webhookAuth middleware
@@ -24,6 +26,8 @@ app.use('/api/predictions', predictionRoutes);
 app.use('/api/webhooks/nostradamus', webhookAuth, webhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/leagues', leagueRoutes);
 
 // Basic error handling middleware
 app.use((err, req, res, next) => {

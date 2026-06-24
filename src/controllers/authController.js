@@ -14,17 +14,46 @@ const register = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        nickname,
-        passwordHash: hashedPassword,
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      // 1. Create the user
+      const u = await tx.user.create({
+        data: {
+          email,
+          nickname,
+          passwordHash: hashedPassword,
+        },
+      });
+
+      // 2. Ensure Global Fans League exists
+      let globalLeague = await tx.league.findUnique({
+        where: { inviteCode: 'GLOBAL26' }
+      });
+
+      if (!globalLeague) {
+        globalLeague = await tx.league.create({
+          data: {
+            name: 'Global Fans League',
+            inviteCode: 'GLOBAL26',
+            scoringStrategy: 'CLASSIC'
+          }
+        });
+      }
+
+      // 3. Add user as member of Global Fans League
+      await tx.leagueMember.create({
+        data: {
+          userId: u.id,
+          leagueId: globalLeague.id,
+          totalPoints: 0
+        }
+      });
+
+      return u;
     });
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-    res.status(201).json({ user: { id: user.id, email: user.email, nickname: user.nickname }, token });
+    res.status(201).json({ user: { id: user.id, email: user.email, nickname: user.nickname, avatarUrl: user.avatarUrl }, token });
   } catch (error) {
     if (error.code === 'P2002') { // Unique constraint violation
       return res.status(400).json({ error: 'Email or nickname already in use.' });
@@ -58,7 +87,7 @@ const login = async (req, res) => {
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-    res.status(200).json({ user: { id: user.id, email: user.email, nickname: user.nickname }, token });
+    res.status(200).json({ user: { id: user.id, email: user.email, nickname: user.nickname, avatarUrl: user.avatarUrl }, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error.' });

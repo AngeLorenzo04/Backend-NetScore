@@ -1,9 +1,10 @@
 const predictionService = require('../services/predictionService');
 
 const createPrediction = async (req, res) => {
-  const { userId, matchId, leagueId, predictedHome, predictedAway } = req.body;
+  const { matchId, leagueId, predictedHome, predictedAway } = req.body;
+  const userId = req.user.userId;
 
-  if (!userId || !matchId || !leagueId || predictedHome === undefined || predictedAway === undefined) {
+  if (!userId || !matchId || predictedHome === undefined || predictedAway === undefined) {
     return res.status(400).json({ error: 'Missing required prediction fields.' });
   }
 

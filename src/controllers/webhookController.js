@@ -18,7 +18,7 @@ const handleNostradamusWebhook = async (req, res) => {
 
     if (existingMatch && existingMatch.status === 'FINISHED') {
       console.log(`Webhook for matchId ${matchId} already processed (status: FINISHED). Skipping.`);
-      return res.status(200).json({ message: `Webhook for matchId ${matchId} already processed.` });
+      return res.status(400).json({ error: `Match with ID ${matchId} has already been processed.` });
     }
 
     const result = await scoringService.processMatchResult(matchId, homeGoals, awayGoals);

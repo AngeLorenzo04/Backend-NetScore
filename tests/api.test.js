@@ -7,8 +7,9 @@ const jwt = require('jsonwebtoken');
 // Instantiate the mocked Prisma client
 const prisma = new PrismaClient();
 
-// Mock environment variables for JWT secret
+// Mock environment variables for JWT secret and Webhook secret
 process.env.JWT_SECRET = 'test_jwt_secret';
+process.env.WEBHOOK_SECRET = 'test_webhook_secret';
 
 describe('API Integration Tests', () => {
   let authToken;
@@ -28,8 +29,12 @@ describe('API Integration Tests', () => {
     prisma.prediction.create.mockReset();
     prisma.prediction.findUnique.mockReset();
     prisma.prediction.update.mockReset();
+    prisma.prediction.upsert.mockReset();
+    prisma.leagueMember.create.mockReset();
     prisma.leagueMember.update.mockReset();
     prisma.leagueMember.findMany.mockReset();
+    prisma.league.create.mockReset();
+    prisma.league.findUnique.mockReset();
     prisma.match.update.mockReset();
     prisma.$transaction.mockImplementation((callback) => callback(prisma)); // Ensure transaction works with our mock
 
@@ -50,6 +55,16 @@ describe('API Integration Tests', () => {
         id: mockUserId,
         ...userData,
         passwordHash: 'hashedpassword', // bcrypt hash
+      });
+      // Mock Prisma's league.findUnique and leagueMember.create methods
+      prisma.league.findUnique.mockResolvedValue({
+        id: mockLeagueId,
+        name: 'Global Fans League',
+        inviteCode: 'GLOBAL26',
+      });
+      prisma.leagueMember.create.mockResolvedValue({
+        userId: mockUserId,
+        leagueId: mockLeagueId,
       });
 
       const res = await request(app)
@@ -133,10 +148,8 @@ describe('API Integration Tests', () => {
         startTime: new Date(Date.now() + 60000), // Match in the future
         status: MatchStatus.SCHEDULED,
       });
-      // Mock prediction.findUnique to ensure no existing prediction
-      prisma.prediction.findUnique.mockResolvedValue(null);
-      // Mock prediction.create
-      prisma.prediction.create.mockResolvedValue({
+      // Mock prediction.upsert
+      prisma.prediction.upsert.mockResolvedValue({
         id: mockPredictionId,
         ...predictionData,
         pointsEarned: null,
@@ -150,8 +163,7 @@ describe('API Integration Tests', () => {
       expect(res.statusCode).toEqual(201);
       expect(res.body).toHaveProperty('id', mockPredictionId);
       expect(prisma.match.findUnique).toHaveBeenCalledTimes(1);
-      expect(prisma.prediction.findUnique).toHaveBeenCalledTimes(1);
-      expect(prisma.prediction.create).toHaveBeenCalledTimes(1);
+      expect(prisma.prediction.upsert).toHaveBeenCalledTimes(1);
     });
 
     it('should return 400 if prediction is made for a non-scheduled match', async () => {
@@ -168,7 +180,6 @@ describe('API Integration Tests', () => {
         startTime: new Date(Date.now() + 60000),
         status: MatchStatus.FINISHED, // Not SCHEDULED
       });
-      prisma.prediction.findUnique.mockResolvedValue(null);
 
       const res = await request(app)
         .post('/api/predictions')
@@ -178,7 +189,7 @@ describe('API Integration Tests', () => {
       expect(res.statusCode).toEqual(400);
       expect(res.body).toHaveProperty('error', 'Predictions can only be made for matches that are SCHEDULED.');
       expect(prisma.match.findUnique).toHaveBeenCalledTimes(1);
-      expect(prisma.prediction.create).not.toHaveBeenCalled();
+      expect(prisma.prediction.upsert).not.toHaveBeenCalled();
     });
 
     it('should return 401 if no token is provided', async () => {
@@ -240,7 +251,7 @@ describe('API Integration Tests', () => {
         ],
       };
       
-      prisma.match.findUnique.mockResolvedValueOnce(mockMatchWithPredictions);
+      prisma.match.findUnique.mockResolvedValue(mockMatchWithPredictions);
 
       // Mock update calls within the transaction
       prisma.prediction.update.mockResolvedValue({});
@@ -252,13 +263,18 @@ describe('API Integration Tests', () => {
       ]);
 
 
+      const crypto = require('crypto');
+      const payload = JSON.stringify(webhookData);
+      const signature = crypto.createHmac('sha256', 'test_webhook_secret').update(payload).digest('hex');
+
       const res = await request(app)
         .post('/api/webhooks/nostradamus')
+        .set('X-Signature', signature)
         .send(webhookData);
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toHaveProperty('message', `Match ${mockMatchId} results processed successfully.`);
-      expect(prisma.match.findUnique).toHaveBeenCalledTimes(1);
+      expect(prisma.match.findUnique).toHaveBeenCalledTimes(2);
       expect(prisma.prediction.update).toHaveBeenCalledTimes(2); // Two predictions updated
       expect(prisma.leagueMember.update).toHaveBeenCalledTimes(2); // Two league members updated
       expect(prisma.match.update).toHaveBeenCalledTimes(1); // Match updated
@@ -277,8 +293,13 @@ describe('API Integration Tests', () => {
         status: MatchStatus.FINISHED, // Already finished
       });
 
+      const crypto = require('crypto');
+      const payload = JSON.stringify(webhookData);
+      const signature = crypto.createHmac('sha256', 'test_webhook_secret').update(payload).digest('hex');
+
       const res = await request(app)
         .post('/api/webhooks/nostradamus')
+        .set('X-Signature', signature)
         .send(webhookData);
 
       expect(res.statusCode).toEqual(400);

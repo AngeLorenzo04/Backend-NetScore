@@ -13,10 +13,16 @@ const mockPrisma = {
     create: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    upsert: jest.fn(),
   },
   leagueMember: {
+    create: jest.fn(),
     update: jest.fn(),
     findMany: jest.fn(),
+  },
+  league: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
   },
   $transaction: jest.fn((callback) => callback(mockPrisma)),
 };

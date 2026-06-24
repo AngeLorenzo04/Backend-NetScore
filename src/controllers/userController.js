@@ -45,6 +45,77 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const getProfile = async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const userLeagues = await prisma.leagueMember.findMany({
+      where: { userId },
+      include: {
+        league: {
+          include: {
+            leagueMembers: {
+              select: {
+                userId: true,
+                totalPoints: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const leaguesResponse = [];
+    let totalPoints = 0;
+
+    for (const ul of userLeagues) {
+      const league = ul.league;
+      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.totalPoints - a.totalPoints);
+      const rank = sortedMembers.findIndex(m => m.userId === userId) + 1;
+
+      leaguesResponse.push({
+        id: league.id,
+        name: league.name,
+        code: league.inviteCode,
+        memberCount: league.leagueMembers.length,
+        rank: rank > 0 ? rank : 1,
+        points: ul.totalPoints,
+      });
+
+      if (league.inviteCode === 'GLOBAL26') {
+        totalPoints = ul.totalPoints;
+      }
+    }
+
+    res.status(200).json({
+      id: user.id,
+      nickname: user.nickname,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      totalPoints,
+      leagues: leaguesResponse,
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+};
+
 module.exports = {
   updateProfile,
+  getProfile,
 };
