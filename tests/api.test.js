@@ -26,11 +26,13 @@ describe('API Integration Tests', () => {
     prisma.user.create.mockReset();
     prisma.user.findUnique.mockReset();
     prisma.match.findUnique.mockReset();
+    prisma.match.findFirst.mockReset();
     prisma.prediction.create.mockReset();
     prisma.prediction.findUnique.mockReset();
     prisma.prediction.update.mockReset();
     prisma.prediction.upsert.mockReset();
     prisma.leagueMember.create.mockReset();
+    prisma.leagueMember.findUnique.mockReset();
     prisma.leagueMember.update.mockReset();
     prisma.leagueMember.findMany.mockReset();
     prisma.league.create.mockReset();
@@ -142,6 +144,12 @@ describe('API Integration Tests', () => {
         predictedAway: 0,
       };
 
+      // Mock leagueMember membership check
+      prisma.leagueMember.findUnique.mockResolvedValue({
+        userId: mockUserId,
+        leagueId: mockLeagueId,
+      });
+
       // Mock match.findUnique for validation
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,
@@ -174,6 +182,11 @@ describe('API Integration Tests', () => {
         predictedHome: 1,
         predictedAway: 0,
       };
+
+      prisma.leagueMember.findUnique.mockResolvedValue({
+        userId: mockUserId,
+        leagueId: mockLeagueId,
+      });
 
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,

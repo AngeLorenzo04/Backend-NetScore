@@ -104,15 +104,76 @@ const syncMatches = async () => {
   }
 };
 
+let syncTimeout = null;
+
+const scheduleNextSync = async () => {
+  try {
+    console.log('Calculating next dynamic match sync...');
+    const now = new Date();
+
+    // Find the closest unfinished match
+    const nextMatch = await prisma.match.findFirst({
+      where: {
+        status: { not: 'FINISHED' }
+      },
+      orderBy: {
+        startTime: 'asc'
+      }
+    });
+
+    if (!nextMatch) {
+      console.log('No unfinished matches found. Dynamic sync scheduling paused.');
+      return;
+    }
+
+    const matchStartTime = new Date(nextMatch.startTime);
+    const syncTime = new Date(matchStartTime.getTime() + 115 * 60 * 1000);
+    let delayMs = syncTime.getTime() - now.getTime();
+
+    console.log(`Closest unfinished match: ${nextMatch.homeTeam} vs ${nextMatch.awayTeam} (Start: ${matchStartTime.toISOString()})`);
+    console.log(`Target sync time: ${syncTime.toISOString()}`);
+
+    if (syncTimeout) {
+      clearTimeout(syncTimeout);
+    }
+
+    if (delayMs <= 0) {
+      console.log('Target sync time has already passed. Executing sync now...');
+      await syncMatches();
+      // To avoid infinite loops in case the external API hasn't marked it finished yet,
+      // we schedule the next check in 5 minutes.
+      console.log('Waiting 5 minutes before next scheduling check...');
+      syncTimeout = setTimeout(scheduleNextSync, 5 * 60 * 1000);
+    } else {
+      console.log(`Scheduling sync in ${Math.round(delayMs / 1000 / 60)} minutes (${delayMs} ms).`);
+      syncTimeout = setTimeout(async () => {
+        console.log(`Scheduled sync running now for match: ${nextMatch.homeTeam} vs ${nextMatch.awayTeam}`);
+        await syncMatches();
+        scheduleNextSync();
+      }, delayMs);
+    }
+  } catch (error) {
+    console.error('Error scheduling next sync:', error);
+    // Retry in 1 minute
+    syncTimeout = setTimeout(scheduleNextSync, 60000);
+  }
+};
+
 const startMatchSyncJob = () => {
+  // Start the dynamic scheduling
+  scheduleNextSync();
+
+  // Daily backup job
   cron.schedule('0 3 * * *', async () => {
-    console.log('Running daily match synchronization job...');
+    console.log('Running daily backup match synchronization job...');
     await syncMatches();
+    // Re-trigger dynamic schedule check in case of missed states
+    scheduleNextSync();
   }, {
     scheduled: true,
     timezone: "Etc/UTC"
   });
-  console.log('Match synchronization job scheduled to run daily at 3:00 AM UTC.');
+  console.log('Match synchronization job initialized (dynamic + daily backup at 3:00 AM UTC).');
 };
 
 module.exports = {

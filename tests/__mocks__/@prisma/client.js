@@ -7,6 +7,7 @@ const mockPrisma = {
   },
   match: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
   },
   prediction: {
@@ -17,6 +18,7 @@ const mockPrisma = {
   },
   leagueMember: {
     create: jest.fn(),
+    findUnique: jest.fn(),
     update: jest.fn(),
     findMany: jest.fn(),
   },

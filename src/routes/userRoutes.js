@@ -9,4 +9,7 @@ router.get('/profile', authenticateToken, userController.getProfile);
 // PUT /api/users/profile - Protected route
 router.put('/profile', authenticateToken, userController.updateProfile);
 
+// GET /api/users/profile/:userId - Protected route (other users)
+router.get('/profile/:userId', authenticateToken, userController.getOtherUserProfile);
+
 module.exports = router;
