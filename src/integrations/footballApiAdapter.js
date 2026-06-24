@@ -31,11 +31,28 @@ function transformMatches(externalData) {
           matchStatus = 'SCHEDULED';
       }
 
+      let startTime = new Date(match.utcDate);
+      try {
+        const formatter = new Intl.DateTimeFormat('sv-SE', {
+          timeZone: 'Europe/Rome',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        const romeDateString = formatter.format(startTime).replace(' ', 'T') + 'Z';
+        startTime = new Date(romeDateString);
+      } catch (e) {
+        console.warn("Failed to shift time to Europe/Rome, using default UTC date:", e);
+      }
+
       return {
         id: match.id.toString(),
         homeTeam: homeTeamName,
         awayTeam: awayTeamName,
-        startTime: new Date(match.utcDate),
+        startTime: startTime,
         status: matchStatus,
         homeScore: match.score && match.score.fullTime ? match.score.fullTime.home : null,
         awayScore: match.score && match.score.fullTime ? match.score.fullTime.away : null,
