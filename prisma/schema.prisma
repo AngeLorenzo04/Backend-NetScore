@@ -12,6 +12,7 @@ model User {
   nickname      String         @unique
   email         String         @unique
   passwordHash  String
+  avatarUrl     String?        @map("avatar_url")
   leagueMembers LeagueMember[]
   predictions   Prediction[]
 

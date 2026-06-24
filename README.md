@@ -23,17 +23,31 @@ This project implements the backend API for NetScore, a prediction platform wher
 *   **Real-time Leaderboard**: Broadcast leaderboard updates to connected clients via WebSockets after match results are processed.
 *   **Automated Testing**: Comprehensive integration tests for API endpoints using Jest and Supertest.
 
-## 🏛️ Architecture
+## 🏛️ Architecture & Design
 
-The backend follows a strict Layered Architecture to ensure separation of concerns and maintainability:
+The backend follows a **Layered Architecture** and leverages design patterns like the **Strategy Pattern** to ensure modularity, scalability, and ease of testing.
 
-*   **`src/routes`**: Defines API endpoints and maps them to controller functions.
-*   **`src/controllers`**: Handles incoming HTTP requests, extracts request data, and orchestrates calls to the service layer. Responsible for HTTP responses.
-*   **`src/services`**: Contains the core business logic, orchestrating interactions between repositories, performing validations, and implementing application-specific rules.
-*   **`src/repositories`**: (Implicitly handled by Prisma Client) Directly interacts with the database. Prisma Client acts as our repository layer.
-*   **`src/strategies`**: Implements design patterns like the Strategy Pattern (e.g., for different scoring methods).
-*   **`src/middlewares`**: Functions that have access to the request and response objects, and the next middleware function in the application’s request-response cycle (e.g., authentication).
-*   **`src/websockets`**: Manages Socket.io connections and real-time event emissions.
+### System Architecture Flow
+```mermaid
+graph TD
+    Client[Client / Frontend] <-->|WebSockets / HTTP| Express[Express Server]
+    Express -->|Routes| RouteHandler[Route Layer]
+    RouteHandler -->|Auth/Webhook Middleware| Middleware[Middleware Layer]
+    Middleware -->|Controllers| Controller[Controller Layer]
+    Controller -->|Services| Service[Service Layer]
+    Service -->|Prisma Client| DB[(PostgreSQL Database)]
+    Service -->|Strategy Pattern| Scoring[Scoring Strategy]
+    Service -->|Socket Manager| WebSockets[Socket.io Broadcast]
+```
+
+### Key Architectural Layers:
+*   **`src/routes`**: Defines the HTTP API endpoints and associates them with specific controller handlers.
+*   **`src/controllers`**: Standardizes request validation, extracts parameters from bodies/headers, invokes services, and handles HTTP response codes and structures.
+*   **`src/services`**: The core business logic layer. Implements business validations (e.g., verifying if a match is scheduled before allowing predictions) and orchestrates database transactions using Prisma.
+*   **`src/strategies`**: Implements the **Strategy Pattern** for prediction scoring. Different leagues can define different strategies (e.g. `CLASSIC`) extending a base class, making it easy to add new scoring rules without changing the controller or service logic.
+*   **`src/middlewares`**: Intercepts requests for authentication (JWT verifying) and security validation (HMAC SHA-256 webhook signature validation).
+*   **`src/websockets`**: Manages room-based Socket.io namespaces to stream live leaderboard updates to clients joined in a specific league room.
+*   **`src/jobs`**: Automated cron tasks (using `node-cron`) to daily synchronize real-world sports fixtures (fetching from APIs like Football-Data.org) into our database.
 
 ## 🛠️ Prerequisites
 
@@ -109,6 +123,18 @@ All API endpoints are prefixed with `/api`.
     *   **Request Body**: `{ "email": "string", "password": "string" }`
     *   **Response**: `200 OK` with `{ "user": { "id": "uuid", "email": "string", "nickname": "string" }, "token": "string" }`
     *   **Errors**: `400 Bad Request` if email/password missing or invalid credentials.
+
+### Users (Profile Management)
+
+*   **`PUT /api/users/profile`**
+    *   **Description**: Updates the logged-in user's profile details.
+    *   **Authentication**: Requires a valid JWT in the `Authorization: Bearer <token>` header.
+    *   **Request Body**: `{ "nickname": "string", "email": "string", "password": "string", "avatarUrl": "string" }` (at least one field is required, all are optional).
+    *   **Response**: `200 OK` with `{ "message": "Profile updated successfully.", "user": { "id": "uuid", "nickname": "string", "email": "string", "avatarUrl": "string" } }`
+    *   **Errors**:
+        *   `401 Unauthorized` if token is missing.
+        *   `403 Forbidden` if token is invalid or expired.
+        *   `400 Bad Request` if no update fields are provided or if email/nickname is already in use.
 
 ### Predictions
 

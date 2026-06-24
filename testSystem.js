@@ -57,6 +57,32 @@ async function runTest() {
   const userId = registerData.user.id;
   console.log(`User registered successfully. ID: ${userId}`);
 
+  // 3.5 Test profile update (nickname, avatarUrl)
+  console.log("Testing profile update...");
+  const newNickname = `UpdatedNick_${Math.random().toString(36).substring(2, 7)}`;
+  const avatarUrl = "https://example.com/avatar.png";
+  
+  const updateResponse = await fetch('http://localhost:3000/api/users/profile', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      nickname: newNickname,
+      avatarUrl: avatarUrl
+    })
+  });
+
+  if (!updateResponse.ok) {
+    const errorText = await updateResponse.text();
+    console.error(`Profile update failed: ${updateResponse.status} - ${errorText}`);
+    process.exit(1);
+  }
+
+  const updateData = await updateResponse.json();
+  console.log(`Profile updated successfully. New Nickname: ${updateData.user.nickname}, Avatar: ${updateData.user.avatarUrl}`);
+
   // 4. Join the user to the league (insert LeagueMember)
   console.log("Joining user to the league...");
   await prisma.leagueMember.create({
