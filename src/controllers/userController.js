@@ -94,6 +94,7 @@ const getProfile = async (req, res) => {
         memberCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
         points: ul.totalPoints,
+        creatorId: league.creatorId,
       });
 
       if (league.inviteCode === 'GLOBAL26') {
@@ -162,6 +163,7 @@ const getOtherUserProfile = async (req, res) => {
         memberCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
         points: ul.totalPoints,
+        creatorId: league.creatorId,
       });
 
       if (league.inviteCode === 'GLOBAL26') {
