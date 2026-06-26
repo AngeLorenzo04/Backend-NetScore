@@ -1,6 +1,7 @@
 # NetScore Backend API
 
 This project implements the backend API for NetScore, a prediction platform where users can predict match outcomes within leagues and track their scores in real-time. The API is built with Node.js, Express, and Prisma, leveraging PostgreSQL as the database and Socket.io for real-time updates.
+visit https://netscore26.cloud/ to explore the website
 
 ## 🚀 Technologies Used
 
