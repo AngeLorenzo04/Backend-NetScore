@@ -56,6 +56,7 @@ const getProfile = async (req, res) => {
         nickname: true,
         email: true,
         avatarUrl: true,
+        totalPoints: true,
       },
     });
 
@@ -69,9 +70,13 @@ const getProfile = async (req, res) => {
         league: {
           include: {
             leagueMembers: {
-              select: {
-                userId: true,
-                totalPoints: true,
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    totalPoints: true,
+                  },
+                },
               },
             },
           },
@@ -80,11 +85,11 @@ const getProfile = async (req, res) => {
     });
 
     const leaguesResponse = [];
-    let totalPoints = 0;
+    const totalPoints = user.totalPoints;
 
     for (const ul of userLeagues) {
       const league = ul.league;
-      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.totalPoints - a.totalPoints);
+      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.user.totalPoints - a.user.totalPoints);
       const rank = sortedMembers.findIndex(m => m.userId === userId) + 1;
 
       leaguesResponse.push({
@@ -93,13 +98,9 @@ const getProfile = async (req, res) => {
         code: league.inviteCode,
         memberCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
-        points: ul.totalPoints,
+        points: user.totalPoints,
         creatorId: league.creatorId,
       });
-
-      if (league.inviteCode === 'GLOBAL26') {
-        totalPoints = ul.totalPoints;
-      }
     }
 
     res.status(200).json({
@@ -126,6 +127,7 @@ const getOtherUserProfile = async (req, res) => {
         id: true,
         nickname: true,
         avatarUrl: true,
+        totalPoints: true,
       },
     });
 
@@ -139,9 +141,13 @@ const getOtherUserProfile = async (req, res) => {
         league: {
           include: {
             leagueMembers: {
-              select: {
-                userId: true,
-                totalPoints: true,
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    totalPoints: true,
+                  },
+                },
               },
             },
           },
@@ -150,11 +156,11 @@ const getOtherUserProfile = async (req, res) => {
     });
 
     const leaguesResponse = [];
-    let totalPoints = 0;
+    const totalPoints = user.totalPoints;
 
     for (const ul of userLeagues) {
       const league = ul.league;
-      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.totalPoints - a.totalPoints);
+      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.user.totalPoints - a.user.totalPoints);
       const rank = sortedMembers.findIndex(m => m.userId === userId) + 1;
 
       leaguesResponse.push({
@@ -162,13 +168,9 @@ const getOtherUserProfile = async (req, res) => {
         name: league.name,
         memberCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
-        points: ul.totalPoints,
+        points: user.totalPoints,
         creatorId: league.creatorId,
       });
-
-      if (league.inviteCode === 'GLOBAL26') {
-        totalPoints = ul.totalPoints;
-      }
     }
 
     res.status(200).json({
