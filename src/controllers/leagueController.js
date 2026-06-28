@@ -8,12 +8,17 @@ const getUserLeagues = async (req, res) => {
     const userLeagues = await prisma.leagueMember.findMany({
       where: { userId },
       include: {
+        user: true,
         league: {
           include: {
             leagueMembers: {
-              select: {
-                userId: true,
-                totalPoints: true
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    totalPoints: true
+                  }
+                }
               }
             }
           }
@@ -24,7 +29,7 @@ const getUserLeagues = async (req, res) => {
     const leaguesResponse = [];
     for (const ul of userLeagues) {
       const league = ul.league;
-      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.totalPoints - a.totalPoints);
+      const sortedMembers = [...league.leagueMembers].sort((a, b) => b.user.totalPoints - a.user.totalPoints);
       const rank = sortedMembers.findIndex(m => m.userId === userId) + 1;
 
       leaguesResponse.push({
@@ -33,7 +38,7 @@ const getUserLeagues = async (req, res) => {
         code: league.inviteCode,
         membersCount: league.leagueMembers.length,
         rank: rank > 0 ? rank : 1,
-        points: ul.totalPoints,
+        points: ul.user.totalPoints,
         creatorId: league.creatorId
       });
     }
@@ -75,8 +80,7 @@ const createLeague = async (req, res) => {
       await tx.leagueMember.create({
         data: {
           userId,
-          leagueId: league.id,
-          totalPoints: 0
+          leagueId: league.id
         }
       });
 
@@ -129,8 +133,7 @@ const joinLeague = async (req, res) => {
       await tx.leagueMember.create({
         data: {
           userId,
-          leagueId: league.id,
-          totalPoints: 0
+          leagueId: league.id
         }
       });
     });
@@ -158,19 +161,21 @@ const getLeaderboard = async (req, res) => {
   try {
     const members = await prisma.leagueMember.findMany({
       where: { leagueId },
-      orderBy: { totalPoints: 'desc' },
       include: {
         user: {
           select: {
             id: true,
             nickname: true,
-            avatarUrl: true
+            avatarUrl: true,
+            totalPoints: true
           }
         }
       }
     });
 
-    const leaderboard = members.map((m, index) => {
+    const sortedMembers = [...members].sort((a, b) => b.user.totalPoints - a.user.totalPoints);
+
+    const leaderboard = sortedMembers.map((m, index) => {
       const initials = m.user.nickname
         .split(' ')
         .map(n => n[0])
@@ -182,7 +187,7 @@ const getLeaderboard = async (req, res) => {
         id: m.user.id,
         name: m.user.nickname,
         avatar: m.user.avatarUrl || initials,
-        points: m.totalPoints,
+        points: m.user.totalPoints,
         rank: index + 1,
         trend: 'same',
         isYou: m.user.id === userId

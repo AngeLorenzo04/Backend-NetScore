@@ -25,6 +25,7 @@ describe('API Integration Tests', () => {
     // Reset Prisma client mock functions
     prisma.user.create.mockReset();
     prisma.user.findUnique.mockReset();
+    prisma.user.update.mockReset();
     prisma.match.findUnique.mockReset();
     prisma.match.findFirst.mockReset();
     prisma.prediction.create.mockReset();
@@ -290,15 +291,15 @@ describe('API Integration Tests', () => {
 
       // Mock update calls within the transaction
       prisma.prediction.update.mockResolvedValue({});
-      prisma.leagueMember.updateMany.mockResolvedValue({});
+      prisma.user.update.mockResolvedValue({});
       prisma.match.update.mockResolvedValue({});
       prisma.leagueMember.findMany
         .mockResolvedValueOnce([
           { leagueId: mockLeagueId }
         ])
         .mockResolvedValueOnce([
-          { userId: mockUserId, user: { id: mockUserId, nickname: 'testuser' }, totalPoints: 5 },
-          { userId: 'another-user-id', user: { id: 'another-user-id', nickname: 'anotheruser' }, totalPoints: 2 },
+          { userId: mockUserId, user: { id: mockUserId, nickname: 'testuser', totalPoints: 5 } },
+          { userId: 'another-user-id', user: { id: 'another-user-id', nickname: 'anotheruser', totalPoints: 2 } },
         ]);
 
       const crypto = require('crypto');
@@ -314,7 +315,7 @@ describe('API Integration Tests', () => {
       expect(res.body).toHaveProperty('message', `Match ${mockMatchId} results processed successfully.`);
       expect(prisma.match.findUnique).toHaveBeenCalledTimes(2);
       expect(prisma.prediction.update).toHaveBeenCalledTimes(2); // Two predictions updated
-      expect(prisma.leagueMember.updateMany).toHaveBeenCalledTimes(2); // Two users' memberships updated
+      expect(prisma.user.update).toHaveBeenCalledTimes(2); // Two users' totalPoints updated
       expect(prisma.match.update).toHaveBeenCalledTimes(1); // Match updated
       expect(prisma.leagueMember.findMany).toHaveBeenCalledTimes(2); // First for user's leagues, second for leaderboard
     });

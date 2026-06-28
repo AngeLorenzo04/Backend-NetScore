@@ -4,6 +4,7 @@ const mockPrisma = {
   user: {
     create: jest.fn(),
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
   match: {
     findUnique: jest.fn(),

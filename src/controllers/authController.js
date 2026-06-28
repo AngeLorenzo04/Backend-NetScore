@@ -43,8 +43,7 @@ const register = async (req, res) => {
       await tx.leagueMember.create({
         data: {
           userId: u.id,
-          leagueId: globalLeague.id,
-          totalPoints: 0
+          leagueId: globalLeague.id
         }
       });
 

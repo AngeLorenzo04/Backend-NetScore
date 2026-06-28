@@ -49,10 +49,10 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
       updatedPredictions.push(updatedPrediction);
       affectedUserIds.push(prediction.userId);
 
-      // Update all LeagueMember entries for this user
-      await tx.leagueMember.updateMany({
+      // Update User totalPoints directly
+      await tx.user.update({
         where: {
-          userId: prediction.userId,
+          id: prediction.userId,
         },
         data: {
           totalPoints: {
@@ -92,22 +92,25 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
   for (const leagueId of uniqueLeagueIds) {
     const leaderboardData = await prisma.leagueMember.findMany({
       where: { leagueId: leagueId },
-      orderBy: { totalPoints: 'desc' },
       include: {
         user: {
           select: {
             id: true,
             nickname: true,
+            totalPoints: true
           },
         },
       },
     });
 
+    // Sort in memory by user.totalPoints desc
+    const sortedLeaderboard = [...leaderboardData].sort((a, b) => b.user.totalPoints - a.user.totalPoints);
+
     // Format data for emission: flatten user object
-    const formattedLeaderboard = leaderboardData.map(lm => ({
+    const formattedLeaderboard = sortedLeaderboard.map(lm => ({
       userId: lm.userId,
       nickname: lm.user.nickname,
-      totalPoints: lm.totalPoints,
+      totalPoints: lm.user.totalPoints,
     }));
 
     socketManager.emitLeaderboard(leagueId, formattedLeaderboard);
