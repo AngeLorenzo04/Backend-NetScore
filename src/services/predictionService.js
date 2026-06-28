@@ -24,48 +24,36 @@ const createPrediction = async ({ userId, matchId, leagueId, predictedHome, pred
     throw new Error('Predictions cannot be made after the match has started.');
   }
 
-  // 2. Determine which leagues to apply this prediction to
-  const memberships = await prisma.leagueMember.findMany({
-    where: { userId },
-    select: { leagueId: true }
+  // 2. Verify user has at least one league membership to allow predictions
+  const membershipCount = await prisma.leagueMember.count({
+    where: { userId }
   });
-  const targetLeagues = memberships.map(m => m.leagueId);
 
-  if (leagueId && !targetLeagues.includes(leagueId)) {
-    throw new Error('User must be a member of the specified league to make predictions.');
-  }
-
-  if (targetLeagues.length === 0) {
+  if (membershipCount === 0) {
     throw new Error('User must be a member of at least one league to make predictions.');
   }
 
-  // 3. Upsert predictions for all target leagues
-  const upserted = [];
-  for (const lid of targetLeagues) {
-    const pred = await prisma.prediction.upsert({
-      where: {
-        userId_matchId_leagueId: {
-          userId,
-          matchId,
-          leagueId: lid
-        }
-      },
-      update: {
-        predictedHome,
-        predictedAway
-      },
-      create: {
+  // 3. Upsert prediction (global per user per match)
+  const pred = await prisma.prediction.upsert({
+    where: {
+      userId_matchId: {
         userId,
-        matchId,
-        leagueId: lid,
-        predictedHome,
-        predictedAway
+        matchId
       }
-    });
-    upserted.push(pred);
-  }
+    },
+    update: {
+      predictedHome,
+      predictedAway
+    },
+    create: {
+      userId,
+      matchId,
+      predictedHome,
+      predictedAway
+    }
+  });
 
-  return upserted[0];
+  return pred;
 };
 
 module.exports = {

@@ -133,28 +133,6 @@ const joinLeague = async (req, res) => {
           totalPoints: 0
         }
       });
-
-      // Replicate existing predictions for scheduled matches
-      const scheduledPredictions = await tx.prediction.findMany({
-        where: {
-          userId,
-          match: { status: 'SCHEDULED' }
-        },
-        distinct: ['matchId']
-      });
-
-      if (scheduledPredictions.length > 0) {
-        await tx.prediction.createMany({
-          data: scheduledPredictions.map(p => ({
-            userId,
-            matchId: p.matchId,
-            leagueId: league.id,
-            predictedHome: p.predictedHome,
-            predictedAway: p.predictedAway
-          })),
-          skipDuplicates: true
-        });
-      }
     });
 
     const updatedMembersCount = league.leagueMembers.length + 1;
@@ -236,10 +214,6 @@ const deleteLeague = async (req, res) => {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.prediction.deleteMany({
-        where: { leagueId },
-      });
-
       await tx.leagueMember.deleteMany({
         where: { leagueId },
       });

@@ -22,15 +22,11 @@ const getMatches = async (req, res) => {
       orderBy: { startTime: 'asc' }
     });
 
-    let predictions = [];
-    if (targetLeagueId) {
-      predictions = await prisma.prediction.findMany({
-        where: {
-          userId,
-          leagueId: targetLeagueId
-        }
-      });
-    }
+    const predictions = await prisma.prediction.findMany({
+      where: {
+        userId
+      }
+    });
 
     const predictionsMap = {};
     predictions.forEach(p => {

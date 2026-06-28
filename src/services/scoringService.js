@@ -18,7 +18,6 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
         predictions: {
           include: {
             user: true,
-            league: true,
           },
         },
       },
@@ -32,6 +31,7 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
     }
 
     const updatedPredictions = [];
+    const affectedUserIds = [];
 
     for (const prediction of match.predictions) {
       const pointsEarned = classicScoring.calculatePoints(
@@ -47,14 +47,12 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
         data: { pointsEarned: pointsEarned },
       });
       updatedPredictions.push(updatedPrediction);
+      affectedUserIds.push(prediction.userId);
 
-      // Update LeagueMember totalPoints
-      await tx.leagueMember.update({
+      // Update all LeagueMember entries for this user
+      await tx.leagueMember.updateMany({
         where: {
-          userId_leagueId: {
-            userId: prediction.userId,
-            leagueId: prediction.leagueId,
-          },
+          userId: prediction.userId,
         },
         data: {
           totalPoints: {
@@ -74,11 +72,22 @@ const processMatchResult = async (matchId, homeGoals, awayGoals) => {
       },
     });
 
-    return { message: `Match ${matchId} results processed successfully.`, updatedPredictions: match.predictions };
+    return { message: `Match ${matchId} results processed successfully.`, affectedUserIds };
   });
 
-  // After transaction, emit leaderboard updates
-  const uniqueLeagueIds = [...new Set(result.updatedPredictions.map(p => p.leagueId))];
+  // After transaction, emit leaderboard updates for all leagues associated with affected users
+  const memberships = await prisma.leagueMember.findMany({
+    where: {
+      userId: {
+        in: result.affectedUserIds
+      }
+    },
+    select: {
+      leagueId: true
+    }
+  });
+
+  const uniqueLeagueIds = [...new Set(memberships.map(m => m.leagueId))];
 
   for (const leagueId of uniqueLeagueIds) {
     const leaderboardData = await prisma.leagueMember.findMany({

@@ -1,7 +1,7 @@
 const predictionService = require('../services/predictionService');
 
 const createPrediction = async (req, res) => {
-  const { matchId, leagueId, predictedHome, predictedAway } = req.body;
+  const { matchId, predictedHome, predictedAway } = req.body;
   const userId = req.user.userId;
 
   if (!userId || !matchId || predictedHome === undefined || predictedAway === undefined) {
@@ -12,7 +12,6 @@ const createPrediction = async (req, res) => {
     const newPrediction = await predictionService.createPrediction({
       userId,
       matchId,
-      leagueId,
       predictedHome,
       predictedAway,
     });

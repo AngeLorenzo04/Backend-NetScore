@@ -35,6 +35,8 @@ describe('API Integration Tests', () => {
     prisma.leagueMember.findUnique.mockReset();
     prisma.leagueMember.update.mockReset();
     prisma.leagueMember.findMany.mockReset();
+    prisma.leagueMember.count.mockReset();
+    prisma.leagueMember.updateMany.mockReset();
     prisma.league.create.mockReset();
     prisma.league.findUnique.mockReset();
     prisma.match.update.mockReset();
@@ -145,9 +147,7 @@ describe('API Integration Tests', () => {
       };
 
       // Mock leagueMember membership check
-      prisma.leagueMember.findMany.mockResolvedValue([
-        { userId: mockUserId, leagueId: mockLeagueId },
-      ]);
+      prisma.leagueMember.count.mockResolvedValue(1);
 
       // Mock match.findUnique for validation
       prisma.match.findUnique.mockResolvedValue({
@@ -182,9 +182,7 @@ describe('API Integration Tests', () => {
         predictedAway: 0,
       };
 
-      prisma.leagueMember.findMany.mockResolvedValue([
-        { userId: mockUserId, leagueId: mockLeagueId },
-      ]);
+      prisma.leagueMember.count.mockResolvedValue(1);
 
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,
@@ -212,9 +210,7 @@ describe('API Integration Tests', () => {
         predictedAway: 0,
       };
 
-      prisma.leagueMember.findMany.mockResolvedValue([
-        { userId: mockUserId, leagueId: mockLeagueId },
-      ]);
+      prisma.leagueMember.count.mockResolvedValue(1);
 
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,
@@ -273,23 +269,19 @@ describe('API Integration Tests', () => {
             id: mockPredictionId,
             userId: mockUserId,
             matchId: mockMatchId,
-            leagueId: mockLeagueId,
             predictedHome: 2,
             predictedAway: 1, // Exact score
             pointsEarned: null,
-            user: { id: mockUserId, nickname: 'testuser' },
-            league: { id: mockLeagueId, name: 'Test League' }
+            user: { id: mockUserId, nickname: 'testuser' }
           },
           {
             id: 'another-prediction-id',
             userId: 'another-user-id',
             matchId: mockMatchId,
-            leagueId: mockLeagueId,
             predictedHome: 1,
             predictedAway: 0, // Correct outcome
             pointsEarned: null,
-            user: { id: 'another-user-id', nickname: 'anotheruser' },
-            league: { id: mockLeagueId, name: 'Test League' }
+            user: { id: 'another-user-id', nickname: 'anotheruser' }
           },
         ],
       };
@@ -298,13 +290,16 @@ describe('API Integration Tests', () => {
 
       // Mock update calls within the transaction
       prisma.prediction.update.mockResolvedValue({});
-      prisma.leagueMember.update.mockResolvedValue({});
+      prisma.leagueMember.updateMany.mockResolvedValue({});
       prisma.match.update.mockResolvedValue({});
-      prisma.leagueMember.findMany.mockResolvedValue([
-        { userId: mockUserId, user: { id: mockUserId, nickname: 'testuser' }, totalPoints: 5 },
-        { userId: 'another-user-id', user: { id: 'another-user-id', nickname: 'anotheruser' }, totalPoints: 2 },
-      ]);
-
+      prisma.leagueMember.findMany
+        .mockResolvedValueOnce([
+          { leagueId: mockLeagueId }
+        ])
+        .mockResolvedValueOnce([
+          { userId: mockUserId, user: { id: mockUserId, nickname: 'testuser' }, totalPoints: 5 },
+          { userId: 'another-user-id', user: { id: 'another-user-id', nickname: 'anotheruser' }, totalPoints: 2 },
+        ]);
 
       const crypto = require('crypto');
       const payload = JSON.stringify(webhookData);
@@ -319,9 +314,9 @@ describe('API Integration Tests', () => {
       expect(res.body).toHaveProperty('message', `Match ${mockMatchId} results processed successfully.`);
       expect(prisma.match.findUnique).toHaveBeenCalledTimes(2);
       expect(prisma.prediction.update).toHaveBeenCalledTimes(2); // Two predictions updated
-      expect(prisma.leagueMember.update).toHaveBeenCalledTimes(2); // Two league members updated
+      expect(prisma.leagueMember.updateMany).toHaveBeenCalledTimes(2); // Two users' memberships updated
       expect(prisma.match.update).toHaveBeenCalledTimes(1); // Match updated
-      expect(prisma.leagueMember.findMany).toHaveBeenCalledTimes(1); // Leaderboard fetched
+      expect(prisma.leagueMember.findMany).toHaveBeenCalledTimes(2); // First for user's leagues, second for leaderboard
     });
 
     it('should return 400 if match result already processed', async () => {

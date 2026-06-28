@@ -21,6 +21,8 @@ const mockPrisma = {
     findUnique: jest.fn(),
     update: jest.fn(),
     findMany: jest.fn(),
+    count: jest.fn(),
+    updateMany: jest.fn(),
   },
   league: {
     create: jest.fn(),
