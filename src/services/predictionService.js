@@ -25,29 +25,14 @@ const createPrediction = async ({ userId, matchId, leagueId, predictedHome, pred
   }
 
   // 2. Determine which leagues to apply this prediction to
-  let targetLeagues = [];
-  if (leagueId) {
-    const membership = await prisma.leagueMember.findUnique({
-      where: {
-        userId_leagueId: {
-          userId,
-          leagueId,
-        },
-      },
-    });
-    if (!membership) {
-      throw new Error('User must be a member of the specified league to make predictions.');
-    }
-    targetLeagues = [leagueId];
-  } else {
-    const firstLeague = await prisma.leagueMember.findFirst({
-      where: { userId },
-      orderBy: { leagueId: 'asc' },
-      select: { leagueId: true }
-    });
-    if (firstLeague) {
-      targetLeagues = [firstLeague.leagueId];
-    }
+  const memberships = await prisma.leagueMember.findMany({
+    where: { userId },
+    select: { leagueId: true }
+  });
+  const targetLeagues = memberships.map(m => m.leagueId);
+
+  if (leagueId && !targetLeagues.includes(leagueId)) {
+    throw new Error('User must be a member of the specified league to make predictions.');
   }
 
   if (targetLeagues.length === 0) {

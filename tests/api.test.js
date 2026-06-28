@@ -145,10 +145,9 @@ describe('API Integration Tests', () => {
       };
 
       // Mock leagueMember membership check
-      prisma.leagueMember.findUnique.mockResolvedValue({
-        userId: mockUserId,
-        leagueId: mockLeagueId,
-      });
+      prisma.leagueMember.findMany.mockResolvedValue([
+        { userId: mockUserId, leagueId: mockLeagueId },
+      ]);
 
       // Mock match.findUnique for validation
       prisma.match.findUnique.mockResolvedValue({
@@ -183,10 +182,9 @@ describe('API Integration Tests', () => {
         predictedAway: 0,
       };
 
-      prisma.leagueMember.findUnique.mockResolvedValue({
-        userId: mockUserId,
-        leagueId: mockLeagueId,
-      });
+      prisma.leagueMember.findMany.mockResolvedValue([
+        { userId: mockUserId, leagueId: mockLeagueId },
+      ]);
 
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,
@@ -214,10 +212,9 @@ describe('API Integration Tests', () => {
         predictedAway: 0,
       };
 
-      prisma.leagueMember.findUnique.mockResolvedValue({
-        userId: mockUserId,
-        leagueId: mockLeagueId,
-      });
+      prisma.leagueMember.findMany.mockResolvedValue([
+        { userId: mockUserId, leagueId: mockLeagueId },
+      ]);
 
       prisma.match.findUnique.mockResolvedValue({
         id: mockMatchId,
