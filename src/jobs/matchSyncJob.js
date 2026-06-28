@@ -117,6 +117,8 @@ const syncMatches = async () => {
                 startTime: match.startTime,
                 homeGoals: match.homeScore,
                 awayGoals: match.awayScore,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
               }
             });
           }
@@ -129,6 +131,8 @@ const syncMatches = async () => {
               startTime: match.startTime,
               homeGoals: match.homeScore,
               awayGoals: match.awayScore,
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
             },
             create: {
               id: match.id,
